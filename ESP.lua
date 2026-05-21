@@ -1,16 +1,17 @@
-local Players = game:GetService("Players")
+localPlayers = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local Camera = workspace.CurrentCamera
 local LocalPlayer = Players.LocalPlayer
 local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
 
--- State (ปิดทั้งหมดเป็นค่าเริ่มต้นเวลารันครั้งแรก)
+-- State
 local ESPEnabled = false
 local ShowLine = false
 local ShowName = false
 local ShowDistance = false
-local RainbowEnabled = false 
+local RainbowEnabled = false
+local WallhackEnabled = false
 
 local espObjects = {}
 
@@ -19,7 +20,7 @@ local function getCurrentRGB()
     return Color3.fromHSV((os.clock() * 0.2) % 1, 1, 1)
 end
 
--- ฟังก์ชันคำนวณระยะทางและแปลงเป็นหน่วยเมตร (1 Stud = 0.28 เมตร)
+-- ฟังก์ชันคำนวณระยะทาง
 local function getDistance(character)
     local root = character:FindFirstChild("HumanoidRootPart")
     local myRoot = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
@@ -56,11 +57,13 @@ local function applyESP(player, character)
     if character:FindFirstChild("PlayerHighlight") then character.PlayerHighlight:Destroy() end
     if head:FindFirstChild("NameBillboard") then head.NameBillboard:Destroy() end
 
+    -- ✨ Highlight: แค่กรอบ สีน้ำเงิน ไม่เต็มตัว
     local highlight = Instance.new("Highlight")
     highlight.Name = "PlayerHighlight"
     highlight.Adornee = character
-    highlight.FillTransparency = 1
+    highlight.FillTransparency = 1  -- ✨ ไม่เต็มตัว (แค่กรอบ)
     highlight.OutlineTransparency = 0
+    highlight.OutlineColor = Color3.fromRGB(0, 120, 255)  -- ✨ สีน้ำเงิน
     highlight.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
     highlight.Parent = character
 
@@ -73,25 +76,25 @@ local function applyESP(player, character)
     billboard.Adornee = head
     billboard.Parent = head
 
-    -- ชื่อผู้เล่น (เปลี่ยนเป็นสีขาว)
+    -- ชื่อผู้เล่น
     local nameLabel = Instance.new("TextLabel")
     nameLabel.Size = UDim2.new(1, 0, 0.5, 0)
     nameLabel.BackgroundTransparency = 1
     nameLabel.Text = player.Name
-    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- สีขาว
+    nameLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     nameLabel.TextStrokeTransparency = 0
     nameLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     nameLabel.Font = Enum.Font.SourceSansBold
     nameLabel.TextSize = 13
     nameLabel.Parent = billboard
 
-    -- ระยะห่าง (เปลี่ยนเป็นสีขาว)
+    -- ระยะห่าง
     local distLabel = Instance.new("TextLabel")
     distLabel.Size = UDim2.new(1, 0, 0.5, 0)
     distLabel.Position = UDim2.new(0, 0, 0.5, 0)
     distLabel.BackgroundTransparency = 1
     distLabel.Text = ""
-    distLabel.TextColor3 = Color3.fromRGB(255, 255, 255) -- สีขาว
+    distLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
     distLabel.TextStrokeTransparency = 0
     distLabel.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
     distLabel.Font = Enum.Font.SourceSansBold
@@ -131,6 +134,7 @@ local function applyESP(player, character)
 
         local currentColor = RainbowEnabled and getCurrentRGB() or Color3.fromRGB(0, 120, 255)
 
+        -- ✨ กรอบสีน้ำเงิน (หรือ Rainbow ถ้าเปิด)
         highlight.OutlineColor = currentColor
 
         highlight.Enabled = ESPEnabled
@@ -190,12 +194,12 @@ Players.PlayerAdded:Connect(setupPlayer)
 Players.PlayerRemoving:Connect(cleanupPlayer)
 
 -- ==========================================
--- GUI หลัก (ปรับตำแหน่งไปอยู่ฝั่งขวาตรงกลางจอพอดี)
+--  GUI หลัก
 -- ==========================================
 local frame = Instance.new("Frame")
 frame.Size = UDim2.new(0, 180, 0, 255)
-frame.AnchorPoint = Vector2.new(1, 0.5) -- จุดอ้างอิงขวาตรงกลาง
-frame.Position = UDim2.new(1, -20, 0.5, 0) -- ขวาตรงกลางจอพอดี ห่างจากขอบขวา 20px
+frame.AnchorPoint = Vector2.new(1, 0.5)
+frame.Position = UDim2.new(1, -20, 0.5, 0)
 frame.BackgroundColor3 = Color3.fromRGB(15, 15, 20)
 frame.BorderSizePixel = 0
 frame.ZIndex = 10
@@ -223,9 +227,7 @@ titleLabel.TextXAlignment = Enum.TextXAlignment.Left
 titleLabel.ZIndex = 10
 titleLabel.Parent = titleBar
 
--- ==========================================
--- MODERN CLOSE BUTTON (IMAGEBUTTON + SHUTDOWN)
--- ==========================================
+-- Close Button
 local closeBtn = Instance.new("ImageButton")
 closeBtn.Size = UDim2.fromOffset(24, 24)
 closeBtn.Position = UDim2.new(1, -32, 0, 7)
@@ -236,7 +238,6 @@ closeBtn.ZIndex = 11
 closeBtn.Parent = titleBar
 Instance.new("UICorner", closeBtn).CornerRadius = UDim.new(0, 6)
 
--- Hover Effect
 closeBtn.MouseEnter:Connect(function()
     closeBtn.BackgroundColor3 = Color3.fromRGB(200, 50, 50)
 end)
@@ -244,7 +245,6 @@ closeBtn.MouseLeave:Connect(function()
     closeBtn.BackgroundColor3 = Color3.fromRGB(240, 70, 70)
 end)
 
--- กดปุ่มปิด -> เคลียร์ระบบและทำลายสคริปต์ทิ้งถาวร
 closeBtn.MouseButton1Click:Connect(function()
     for _, obj in pairs(espObjects) do
         if obj.highlight then obj.highlight:Destroy() end
@@ -252,16 +252,16 @@ closeBtn.MouseButton1Click:Connect(function()
         if obj.lineFrame then obj.lineFrame:Destroy() end
     end
     screenGui:Destroy()
-    print("⛔ WackShop ESP Player Script has been completely shut down via Modern Red Button.")
+    print("⛔ WackShop ESP has been shut down.")
 end)
 
 -- ==========================================
--- ปุ่ม W (อยู่ที่เดิม ฝั่งซ้ายตรงกลางจอ ลากย้ายได้อิสระ)
+--  ปุ่ม W (Toggle Panel)
 -- ==========================================
 local toggleBtn = Instance.new("TextButton")
 toggleBtn.Size = UDim2.new(0, 44, 0, 44)
 toggleBtn.AnchorPoint = Vector2.new(0, 0.5)
-toggleBtn.Position = UDim2.new(0, 20, 0.5, 0) -- ตึ่งกลางแนวตั้งฝั่งซ้าย (ตำแหน่งเดิม)
+toggleBtn.Position = UDim2.new(0, 20, 0.5, 0)
 toggleBtn.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
 toggleBtn.Text = "W"
 toggleBtn.TextSize = 18
@@ -274,7 +274,7 @@ Instance.new("UICorner", toggleBtn).CornerRadius = UDim.new(1, 0)
 local tStroke = Instance.new("UIStroke", toggleBtn)
 tStroke.Thickness = 1.5
 
--- ทำให้ปุ่ม W ลากย้ายตำแหน่งได้
+-- Drag ปุ่ม W
 local dragBtn, startBtn, startPosBtn
 toggleBtn.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -299,7 +299,7 @@ toggleBtn.MouseButton1Click:Connect(function()
     frame.Visible = not frame.Visible
 end)
 
--- Draggable หน้าต่างหลัก
+-- Drag หน้าต่างหลัก
 local dragging, dragStart, startPos
 titleBar.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -320,6 +320,7 @@ UserInputService.InputEnded:Connect(function(input)
     end
 end)
 
+-- ฟังก์ชันสร้างปุ่ม Toggle
 local function createToggleBtn(labelText, yPos, defaultState, callback)
     local btn = Instance.new("TextButton")
     btn.Size = UDim2.new(0, 155, 0, 30)
@@ -347,15 +348,15 @@ local function createToggleBtn(labelText, yPos, defaultState, callback)
     end)
 end
 
--- สร้างปุ่มเมนูต่างๆ
+-- สร้างปุ่มเมนู
 createToggleBtn("ESP",          45,  false, function(s) ESPEnabled = s end)
 createToggleBtn("เส้นนำทาง",   83,  false, function(s) ShowLine = s end)
 createToggleBtn("ชื่อผู้เล่น", 118, false, function(s) ShowName = s end)
 createToggleBtn("ระยะห่าง",    153, false, function(s) ShowDistance = s end)
-createToggleBtn("โหมดไฟ RGB",  188, false, function(s) RainbowEnabled = s end)
+createToggleBtn("โหมด RGB",    188, false, function(s) RainbowEnabled = s end)
 
 -- ==========================================
--- RENDER LOOP
+--  RENDER LOOP
 -- ==========================================
 RunService.RenderStepped:Connect(function()
     if not screenGui or not screenGui.Parent then return end
@@ -367,3 +368,5 @@ RunService.RenderStepped:Connect(function()
     tStroke.Color = currentColor
     toggleBtn.TextColor3 = currentColor
 end)
+
+print("✅ WackShop ESP (Blue Outline) Loaded!")
